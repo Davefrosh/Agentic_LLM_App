@@ -3,8 +3,6 @@ from langchain_groq import ChatGroq
 from langchain_community.utilities import ArxivAPIWrapper, WikipediaAPIWrapper
 from langchain_community.tools import ArxivQueryRun, WikipediaQueryRun, DuckDuckGoSearchRun
 from langchain.agents import initialize_agent, AgentType
-
-# ✅ Fix the deprecated import
 from langchain_community.callbacks.streamlit import StreamlitCallbackHandler  
 
 import os
@@ -45,7 +43,7 @@ if prompt := st.chat_input(placeholder="What is machine learning?"):
             llm = ChatGroq(groq_api_key=api_key, model_name="Llama3-8b-8192", streaming=True)
             tools = [search, arxiv, wiki]
 
-            # ✅ Fix: Pass only `prompt` instead of full `messages` (avoids `results` issue)
+            # ✅ Fix: Ensure error handling in Agent initialization
             search_agent = initialize_agent(
                 tools,
                 llm,
@@ -55,11 +53,17 @@ if prompt := st.chat_input(placeholder="What is machine learning?"):
 
             with st.chat_message("assistant"):
                 st_cb = StreamlitCallbackHandler(st.container(), expand_new_thoughts=False)
-                response = search_agent.run(prompt, callbacks=[st_cb])  # ✅ Fix: Use `prompt`, not full history
+
+                # ✅ Catch error while running agent
+                try:
+                    response = search_agent.run(prompt, callbacks=[st_cb])
+                    if not response:
+                        response = "⚠️ No response generated. Something went wrong."
+                except Exception as agent_error:
+                    response = f"❌ Error occurred while processing: {agent_error}"
+
                 st.session_state.messages.append({'role': 'assistant', "content": response})
                 st.write(response)
 
     except Exception as e:
-        st.error(f"❌ Error: {e}")  # ✅ Catch and display errors properly
-
-
+        st.error(f"❌ General Error: {e}")  # ✅ Catch and display errors properly
